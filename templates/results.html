@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RISKFORGE Scan Results</title>
+</head>
+
+<body>
+
+    <h1>RISKFORGE VANTAGE</h1>
+
+    <h2>Scan Results</h2>
+
+    <p>
+        Target: <strong>{{ target }}</strong>
+    </p>
+
+    {% if results %}
+
+    <table border="1">
+
+        <tr>
+            <th>Host</th>
+            <th>Port</th>
+            <th>Protocol</th>
+            <th>Service</th>
+            <th>Version</th>
+            <th>State</th>
+            <th>Summary</th>
+        </tr>
+
+        {% for result in results %}
+
+        <tr>
+            <td>{{ result.Host }}</td>
+            <td>{{ result.Port }}</td>
+            <td>{{ result.Protocol }}</td>
+            <td>{{ result.Service }}</td>
+            <td>{{ result.Version }}</td>
+            <td>{{ result.State }}</td>
+            <td>{{ result.Summary }}</td>
+        </tr>
+
+        {% endfor %}
+
+    </table>
+
+    {% else %}
+
+    <p>No open services were found.</p>
+
+    {% endif %}
+
+    <br>
+
+    <a href="/">Scan another target</a>
+
+</body>
+</html>
