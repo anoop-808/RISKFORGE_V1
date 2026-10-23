@@ -34,7 +34,10 @@ def test_index_has_target_form_and_loading_behavior():
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert 'name="target_ip"' in body
+    assert "Ready for scan" in body
     assert "Scanning…" in body
+    assert "Start a focused" in body
+    assert "Service discovery" in body
     assert "app.js" in body
 
 
