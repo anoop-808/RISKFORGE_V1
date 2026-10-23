@@ -239,3 +239,75 @@ def save_scan_results(results, database_path=None):
         raise
     finally:
         conn.close()
+
+
+def fetch_scan_history(database_path=None):
+    conn = initialize_database(database_path)
+    try:
+        rows = conn.execute(
+            """
+            SELECT scans.id, scans.target, scans.scan_time,
+                   COUNT(DISTINCT scan_ports.id) AS open_services,
+                   COUNT(DISTINCT findings.id) AS confirmed_findings,
+                   COUNT(DISTINCT indeterminate_findings.id) AS indeterminate
+            FROM scans
+            LEFT JOIN scan_ports ON scan_ports.scan_id = scans.id
+            LEFT JOIN findings ON findings.scan_id = scans.id
+            LEFT JOIN indeterminate_findings ON indeterminate_findings.scan_id = scans.id
+            GROUP BY scans.id
+            ORDER BY scans.scan_time DESC, scans.id DESC
+            """
+        ).fetchall()
+        return [
+            {"id": row[0], "target": row[1], "scan_time": row[2],
+             "open_services": row[3], "confirmed_findings": row[4], "indeterminate": row[5]}
+            for row in rows
+        ]
+    finally:
+        conn.close()
+
+
+def fetch_findings(database_path=None):
+    conn = initialize_database(database_path)
+    try:
+        confirmed = conn.execute(
+            """
+            SELECT scans.id, scans.target, scans.scan_time, findings.cve_id,
+                   findings.description, findings.cvss, findings.severity,
+                   findings.host, findings.port, findings.protocol, findings.service,
+                   findings.product, findings.version, findings.risk_score,
+                   findings.risk_level, findings.risk_rank, findings.applicability_evidence
+            FROM findings JOIN scans ON scans.id = findings.scan_id
+            ORDER BY scans.scan_time DESC, findings.risk_rank ASC
+            """
+        ).fetchall()
+        indeterminate = conn.execute(
+            """
+            SELECT scans.id, scans.target, scans.scan_time, indeterminate_findings.cve_id,
+                   indeterminate_findings.description, indeterminate_findings.cvss,
+                   indeterminate_findings.severity, indeterminate_findings.host,
+                   indeterminate_findings.port, indeterminate_findings.protocol,
+                   indeterminate_findings.service, indeterminate_findings.product,
+                   indeterminate_findings.version, NULL, NULL, NULL,
+                   indeterminate_findings.applicability_evidence
+            FROM indeterminate_findings JOIN scans ON scans.id = indeterminate_findings.scan_id
+            ORDER BY scans.scan_time DESC
+            """
+        ).fetchall()
+        return [_finding_row(row, "MATCH") for row in confirmed] + [_finding_row(row, "INDETERMINATE") for row in indeterminate]
+    finally:
+        conn.close()
+
+
+def _finding_row(row, applicability):
+    try:
+        evidence = json.loads(row[16]) if row[16] else {}
+    except (TypeError, json.JSONDecodeError):
+        evidence = {}
+    return {
+        "scan_id": row[0], "target": row[1], "scan_time": row[2], "cve_id": row[3],
+        "description": row[4], "cvss": row[5], "severity": row[6], "host": row[7],
+        "port": row[8], "protocol": row[9], "service": row[10], "product": row[11],
+        "version": row[12], "risk_score": row[13], "risk_level": row[14],
+        "risk_rank": row[15], "applicability": applicability, "evidence": evidence,
+    }

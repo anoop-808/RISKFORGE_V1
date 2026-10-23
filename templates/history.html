@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% set active_page = 'history' %}
+{% set page_title = 'Scan history' %}
+{% set breadcrumb = 'Scan History' %}
+{% set page_heading = 'Assessment history' %}
+{% set page_subtitle = 'A record of completed single-target VANTAGE assessments stored by the existing pipeline.' %}
+{% block content %}
+<section class="content-section page-panel"><div class="section-heading"><div><p class="eyebrow">Persisted activity</p><h2>Scan history</h2></div><span class="section-count">{{ scans|length }} assessments</span></div>{% if scans %}<div class="history-list">{% for scan in scans %}<article class="history-row"><div class="history-target"><span class="history-index">{{ '%02d'|format(loop.index) }}</span><div><code>{{ scan.target }}</code><small>{{ scan.scan_time }}</small></div></div><div class="history-metrics"><span><strong>{{ scan.open_services }}</strong> services</span><span><strong>{{ scan.confirmed_findings }}</strong> findings</span><span><strong>{{ scan.indeterminate }}</strong> indeterminate</span></div></article>{% endfor %}</div>{% else %}<div class="empty-state" role="status"><strong>No completed assessments</strong><span>Single-target VANTAGE results will appear here after a scan is saved.</span><a class="button button-secondary" href="{{ url_for('index') }}">Start an assessment <span aria-hidden="true">↗</span></a></div>{% endif %}</section>
+{% endblock %}

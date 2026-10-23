@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% set active_page = 'discovery' %}
+{% set page_title = 'Discovery' %}
+{% set breadcrumb = 'Discovery' %}
+{% set page_heading = 'Authorized discovery' %}
+{% set page_subtitle = 'Review local interface inventory, confirm an exact IPv4 scope, and explicitly discover responding hosts.' %}
+{% block content %}
+<section class="panel discovery-panel page-panel" id="discovery" aria-labelledby="discovery-title">
+    <div class="panel-kicker"><span class="eyebrow">Passive local inventory</span><button class="button button-quiet" type="button" id="refresh-discovery"><span aria-hidden="true">↻</span> Refresh</button></div>
+    <div class="discovery-title-row"><div><h2 id="discovery-title">Network discovery</h2><p class="panel-intro">Local network interfaces, assigned routes, and addresses. Refreshing this inventory never probes the network.</p></div><span class="live-chip"><span class="status-dot"></span>Local only</span></div>
+    <div id="discovery-status" class="discovery-status" role="status" aria-live="polite">Reading local interface configuration…</div>
+    <div id="network-candidates" class="interface-list"></div>
+    <div id="scope-preview" class="scope-preview" hidden></div>
+</section>
+{% endblock %}

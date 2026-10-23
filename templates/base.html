@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title|default('VANTAGE workspace') }} · RISKFORGE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body class="app-body">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <a class="brand" href="{{ url_for('index') }}" aria-label="RISKFORGE VANTAGE overview"><span class="brand-mark" aria-hidden="true">RF</span><span class="brand-copy"><strong>RISKFORGE</strong><small>ENGINE 01 / VANTAGE</small></span></a>
+            <button class="icon-button sidebar-toggle" type="button" id="sidebar-toggle" aria-label="Collapse navigation" aria-expanded="true" title="Collapse navigation"><span aria-hidden="true">‹</span></button>
+        </div>
+        <nav class="sidebar-nav" aria-label="Primary navigation">
+            <p class="nav-label">Workspace</p>
+            <a class="nav-item {{ 'is-active' if active_page == 'overview' }}" href="{{ url_for('index') }}" title="Overview"><span class="nav-icon" aria-hidden="true">⌂</span><span>Overview</span></a>
+            <a class="nav-item {{ 'is-active' if active_page == 'discovery' }}" href="{{ url_for('discovery_page') }}" title="Discovery"><span class="nav-icon" aria-hidden="true">◎</span><span>Discovery</span></a>
+            <a class="nav-item {{ 'is-active' if active_page == 'assessments' }}" href="{{ url_for('index') }}#assessments" title="Assessments"><span class="nav-icon" aria-hidden="true">↗</span><span>Assessments</span></a>
+            <a class="nav-item {{ 'is-active' if active_page == 'findings' }}" href="{{ url_for('findings_page') }}" title="Findings"><span class="nav-icon" aria-hidden="true">◇</span><span>Findings</span></a>
+            <a class="nav-item {{ 'is-active' if active_page == 'history' }}" href="{{ url_for('history') }}" title="Scan history"><span class="nav-icon" aria-hidden="true">◷</span><span>Scan History</span></a>
+        </nav>
+        <div class="sidebar-footer"><span class="status-dot"></span><span>Local workspace</span></div>
+    </aside>
+    <div class="app-frame">
+        <header class="page-header">
+            <div class="mobile-header-row"><button class="icon-button mobile-nav-toggle" type="button" id="mobile-nav-toggle" aria-label="Open navigation" aria-expanded="false"><span aria-hidden="true">☰</span></button><span class="mobile-header-brand">RISKFORGE <small>VANTAGE</small></span></div>
+            <div><p class="breadcrumb"><span>RISKFORGE</span><span aria-hidden="true">/</span><span>{{ breadcrumb|default('Workspace') }}</span></p><h1>{{ page_heading|default('VANTAGE workspace') }}</h1><p class="page-subtitle">{{ page_subtitle|default('Focused exposure intelligence for authorized environments.') }}</p></div>
+            <div class="header-status" id="engine-status"><span class="status-dot"></span><span>Engine 01 / <span class="status-label">Ready for scan</span></span></div>
+        </header>
+        <main class="main-content" id="main-content">{% block content %}{% endblock %}</main>
+    </div>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

@@ -1,66 +1,31 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Scan setup · RISKFORGE VANTAGE</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
-</head>
-<body>
-    <header class="topbar">
-        <a class="brand" href="/" aria-label="RISKFORGE VANTAGE home">
-            <span class="brand-mark" aria-hidden="true">RF</span>
-            <span><strong>RISKFORGE</strong><small>VANTAGE ENGINE</small></span>
-        </a>
-        <span class="engine-status" id="engine-status" aria-live="polite"><span class="status-dot"></span><span class="status-label">Ready for scan</span></span>
-    </header>
-
-    <main class="setup-shell">
-        <section class="setup-copy" aria-labelledby="setup-title">
-            <p class="eyebrow">Exposure intelligence / network assessment</p>
-            <h1 id="setup-title">Start a focused<br><span>VANTAGE scan.</span></h1>
-            <p class="lede">Identify exposed services, map detected software to NVD applicability data, and review confirmed risk without losing the uncertain cases.</p>
-            <dl class="principles">
-                <div><dt>01</dt><dd>Service discovery</dd></div>
-                <div><dt>02</dt><dd>CPE applicability</dd></div>
-                <div><dt>03</dt><dd>Risk-ranked findings</dd></div>
-            </dl>
-        </section>
-
-        <section class="scan-panel" aria-labelledby="scan-panel-title">
-            <div class="panel-heading">
-                <div><p class="eyebrow">New assessment</p><h2 id="scan-panel-title">Scan target</h2></div>
-                <span class="panel-index">01 / 01</span>
-            </div>
-            {% if error %}
-            <div class="alert alert-error" role="alert">{{ error }}</div>
-            {% endif %}
-            <form id="scan-form" action="/scan" method="post">
-                <label for="target_ip">Target IP address</label>
-                <div class="input-row">
-                    <span class="input-prefix" aria-hidden="true">↳</span>
-                    <input type="text" id="target_ip" name="target_ip" value="{{ target }}" placeholder="192.168.56.103" autocomplete="off" required aria-describedby="target-help">
-                </div>
-                <p class="field-help" id="target-help">Enter an IPv4 or IPv6 address within the approved assessment scope.</p>
-                <button class="button button-primary" type="submit">
-                    <span class="button-label">Run VANTAGE scan</span>
-                    <span class="button-loading" aria-hidden="true">Scanning…</span>
-                    <span aria-hidden="true">→</span>
-                </button>
-            </form>
-            <p class="panel-footnote"><span class="lock-mark" aria-hidden="true">▣</span> Results are written through the existing VANTAGE database pipeline.</p>
-
-            <section class="discovery-section" aria-labelledby="discovery-title">
-                <div class="section-heading">
-                    <div><p class="eyebrow">Passive local view</p><h3 id="discovery-title">Choose an assessment scope</h3></div>
-                </div>
-                <p class="field-help">Reads local Linux network configuration only. Selecting a network does not start a scan.</p>
-                <div id="discovery-status" class="discovery-status" role="status" aria-live="polite">Loading local networks…</div>
-                <div id="network-candidates" class="network-candidates"></div>
-                <div id="scope-preview" class="scope-preview" hidden></div>
-            </section>
-        </section>
-    </main>
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
-</body>
-</html>
+{% extends "base.html" %}
+{% set active_page = 'overview' %}
+{% set page_title = 'Overview' %}
+{% set breadcrumb = 'Overview' %}
+{% set page_heading = 'Assessment workspace' %}
+{% set page_subtitle = 'Assess a single target or prepare an authorized local network scope.' %}
+{% block content %}
+<div class="workspace-grid" id="assessments">
+    <section class="panel assessment-panel" aria-labelledby="assessment-title">
+        <div class="panel-kicker"><span class="eyebrow">New assessment</span><span class="panel-tag">VANTAGE / 01</span></div>
+        <h2 id="assessment-title">Start a focused<br><em>VANTAGE scan.</em></h2>
+        <p class="panel-intro">Identify exposed services, map detected software to NVD applicability data, and review confirmed risk without losing the uncertain cases.</p>
+        {% if error %}<div class="alert alert-error" role="alert">{{ error }}</div>{% endif %}
+        <form id="scan-form" action="{{ url_for('scan') }}" method="post">
+            <label for="target_ip">Target IP address</label>
+            <div class="input-row"><span class="input-prefix" aria-hidden="true">↳</span><input type="text" id="target_ip" name="target_ip" value="{{ target }}" placeholder="192.168.56.103" autocomplete="off" required aria-describedby="target-help"></div>
+            <p class="field-help" id="target-help">Enter one IPv4 or IPv6 address within the approved assessment scope.</p>
+            <button class="button button-primary" type="submit"><span class="button-label">Run VANTAGE Scan</span><span class="button-loading" aria-hidden="true">Scanning…</span><span class="button-arrow" aria-hidden="true">↗</span></button>
+        </form>
+        <div class="scope-guidance"><span class="guidance-mark" aria-hidden="true">⌁</span><div><strong>Single-target assessment</strong><p>Network selection and host discovery remain separate from service and vulnerability assessment.</p></div></div>
+    </section>
+    <section class="panel discovery-panel" id="discovery" aria-labelledby="discovery-title">
+        <div class="panel-kicker"><span class="eyebrow">Passive local inventory</span><button class="button button-quiet" type="button" id="refresh-discovery"><span aria-hidden="true">↻</span> Refresh</button></div>
+        <div class="discovery-title-row"><div><h2 id="discovery-title">Network discovery</h2><p class="panel-intro">Local network interfaces, assigned routes, and addresses. No probes are sent while reviewing inventory.</p></div><span class="live-chip"><span class="status-dot"></span>Local only</span></div>
+        <div id="discovery-status" class="discovery-status" role="status" aria-live="polite">Reading local interface configuration…</div>
+        <div id="network-candidates" class="interface-list"></div>
+        <div id="scope-preview" class="scope-preview" hidden></div>
+    </section>
+</div>
+<section class="workspace-note" aria-label="Assessment principles"><div><span class="note-index">01</span><strong>Service discovery</strong><span>Focused Nmap assessment</span></div><div><span class="note-index">02</span><strong>Applicability</strong><span>CPE-aware NVD matching</span></div><div><span class="note-index">03</span><strong>Risk ranking</strong><span>Confirmed findings first</span></div></section>
+{% endblock %}

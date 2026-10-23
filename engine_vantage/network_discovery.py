@@ -68,8 +68,7 @@ def _route_map(routes):
                 network = ipaddress.ip_network(route["dst"], strict=False)
             except (ValueError, TypeError):
                 continue
-            if network.version == 4:
-                result.setdefault(dev, {}).setdefault("routes", []).append(str(network))
+            result.setdefault(dev, {}).setdefault("routes", []).append(str(network))
     return result
 
 
@@ -105,6 +104,27 @@ def discover_network():
             interface["issues"].append(_issue("This interface has no assigned IP address."))
         route_info = routes.get(name, {})
         interface["routes"] = route_info.get("routes", [])
+        interface["gateway"] = route_info.get("gateway")
+        for address in addresses:
+            ip = ipaddress.ip_address(address["address"])
+            network = ipaddress.ip_network(f'{address["address"]}/{address["prefix_length"]}', strict=False)
+            address["network"] = str(network)
+            address["gateway"] = route_info.get("gateway")
+            address["routes"] = route_info.get("routes", [])
+            address["eligible"] = False
+            if ip.is_loopback or network.is_loopback:
+                address["eligibility_reason"] = "Loopback addresses are not assessable scope candidates."
+            elif ip.is_link_local or network.is_link_local:
+                address["eligibility_reason"] = "Link-local addresses are not assessable scope candidates."
+            elif ip.version == 6:
+                address["eligibility_reason"] = "IPv6 is displayed for inventory only; Phase 1 scope preview is IPv4-only."
+            elif network.prefixlen < 24:
+                address["eligibility_reason"] = "Only IPv4 networks no broader than /24 are eligible in Phase 1."
+            elif operstate.lower() not in {"up", "unknown"}:
+                address["eligibility_reason"] = "The interface is not operationally up."
+            else:
+                address["eligible"] = True
+                address["eligibility_reason"] = "Eligible for IPv4 scope preview."
         for address in ipv4:
             ip = ipaddress.ip_address(address["address"])
             network = ipaddress.ip_network(f'{address["address"]}/{address["prefix_length"]}', strict=False)
