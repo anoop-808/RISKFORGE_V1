@@ -1,58 +1,64 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <title>RISKFORGE Scan Results</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scan results · RISKFORGE VANTAGE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
-
 <body>
+    <header class="topbar">
+        <a class="brand" href="/" aria-label="RISKFORGE VANTAGE home">
+            <span class="brand-mark" aria-hidden="true">RF</span>
+            <span><strong>RISKFORGE</strong><small>VANTAGE ENGINE</small></span>
+        </a>
+        <a class="text-link" href="/">New scan <span aria-hidden="true">↗</span></a>
+    </header>
 
-    <h1>RISKFORGE VANTAGE</h1>
+    <main class="results-shell">
+        <section class="results-header">
+            <div>
+                <p class="eyebrow">Assessment report</p>
+                <h1>Exposure overview</h1>
+                <p class="target-line"><span class="muted">Target</span> <code>{{ target }}</code><span class="divider">·</span><span class="muted">Captured</span> <code>{{ scan.scan_time }}</code></p>
+            </div>
+            <div class="scan-complete"><span class="status-dot"></span> Scan complete</div>
+        </section>
 
-    <h2>Scan Results</h2>
+        <section class="summary-grid" aria-label="Scan summary">
+            <article class="summary-card summary-card-accent"><span class="summary-label">Open services</span><strong>{{ summary.open_services }}</strong><span class="summary-note">Detected on target</span></article>
+            <article class="summary-card"><span class="summary-label">Confirmed findings</span><strong>{{ summary.confirmed_findings }}</strong><span class="summary-note">Applicability: MATCH</span></article>
+            <article class="summary-card"><span class="summary-label">Severity distribution</span><div class="severity-counts"><span><i class="severity-key severity-critical"></i>{{ summary.severity_counts.get('CRITICAL', 0) }} critical</span><span><i class="severity-key severity-high"></i>{{ summary.severity_counts.get('HIGH', 0) }} high</span><span><i class="severity-key severity-medium"></i>{{ summary.severity_counts.get('MEDIUM', 0) }} medium</span><span><i class="severity-key severity-low"></i>{{ summary.severity_counts.get('LOW', 0) }} low</span></div></article>
+            <article class="summary-card"><span class="summary-label">Indeterminate</span><strong>{{ summary.indeterminate }}</strong><span class="summary-note">Requires review</span></article>
+            <article class="summary-card"><span class="summary-label">Lookup errors</span><strong>{{ summary.lookup_errors }}</strong><span class="summary-note">NVD query failures</span></article>
+        </section>
 
-    <p>
-        Target: <strong>{{ target }}</strong>
-    </p>
+        <section class="content-section" aria-labelledby="services-title">
+            <div class="section-heading"><div><p class="eyebrow">Surface inventory</p><h2 id="services-title">Open ports &amp; services</h2></div><span class="section-count">{{ ports|length }} records</span></div>
+            {% if ports %}
+            <div class="table-wrap"><table class="data-table"><thead><tr><th>Port</th><th>Protocol</th><th>Service</th><th>Product</th><th>Detected version</th><th>State</th></tr></thead><tbody>
+            {% for port in ports %}<tr><td><code>{{ port.port }}</code></td><td><code>{{ port.protocol|upper }}</code></td><td>{{ port.service or 'Unavailable' }}</td><td>{{ port.product or 'Unavailable' }}</td><td><code>{{ port.version or 'Unknown' }}</code></td><td><span class="state-pill">{{ port.state|upper }}</span></td></tr>{% endfor %}
+            </tbody></table></div>
+            {% else %}<div class="empty-state" role="status"><strong>No open services found</strong><span>The scan completed without returning an open service record.</span></div>{% endif %}
+        </section>
 
-    {% if results %}
+        <section class="content-section" aria-labelledby="findings-title">
+            <div class="section-heading"><div><p class="eyebrow">Prioritized exposure</p><h2 id="findings-title">Confirmed CVE findings</h2></div><span class="section-count">{{ findings|length }} ranked</span></div>
+            {% if findings %}
+            <div class="table-wrap"><table class="data-table findings-table"><thead><tr><th>Rank</th><th>CVE</th><th>Product / version</th><th>Port</th><th>CVSS</th><th>Severity</th><th>Applicability</th><th><span class="sr-only">Details</span></th></tr></thead><tbody>
+            {% for finding in findings %}<tr class="severity-row severity-{{ (finding.risk_level or finding.severity or 'indeterminate')|lower }}"><td><span class="rank">#{{ finding.risk_rank or '—' }}</span></td><td><code class="cve-id">{{ finding.cve_id }}</code></td><td><strong>{{ finding.product or 'Unavailable' }}</strong><small class="table-subline">{{ finding.version or 'Unavailable' }}</small></td><td><code>{{ finding.port or '—' }}/{{ (finding.protocol or '—')|upper }}</code><small class="table-subline">{{ finding.service or 'Unavailable' }}</small></td><td><strong>{{ finding.cvss if finding.cvss is not none else '—' }}</strong></td><td><span class="severity-badge severity-{{ (finding.risk_level or finding.severity or 'unknown')|lower }}">{{ finding.risk_level or finding.severity or 'UNKNOWN' }}</span></td><td><span class="applicability-match">MATCH</span></td><td><details class="finding-details"><summary aria-label="Inspect {{ finding.cve_id }} details">Inspect</summary><div class="detail-popover"><h3>{{ finding.cve_id }}</h3><p>{{ finding.description or 'Description unavailable.' }}</p><dl class="detail-list"><dt>Detected product</dt><dd>{{ finding.product or 'Unavailable' }} {{ finding.version or '' }}</dd><dt>Port / service</dt><dd><code>{{ finding.port or '—' }}/{{ finding.protocol or '—' }}</code> · {{ finding.service or 'Unavailable' }}</dd><dt>CVSS / severity</dt><dd>{{ finding.cvss if finding.cvss is not none else 'Unavailable' }} · {{ finding.severity or finding.risk_level or 'Unavailable' }}</dd><dt>Applicability evidence</dt><dd><pre>{{ finding.applicability_evidence|tojson(indent=2) if finding.applicability_evidence else 'Unavailable' }}</pre></dd><dt>References</dt><dd>Unavailable in the normalized result.</dd></dl></div></details></td></tr>{% endfor %}
+            </tbody></table></div>
+            {% else %}<div class="empty-state" role="status"><strong>No confirmed findings</strong><span>No candidate satisfied the engine's MATCH applicability state.</span></div>{% endif %}
+        </section>
 
-    <table border="1">
+        <section class="content-section" aria-labelledby="indeterminate-title">
+            <div class="section-heading"><div><p class="eyebrow">Needs analyst review</p><h2 id="indeterminate-title">Indeterminate findings</h2></div><span class="section-count">{{ indeterminate|length }} candidates</span></div>
+            {% if indeterminate %}<div class="review-list">{% for finding in indeterminate %}<article class="review-item"><div><code class="cve-id">{{ finding.cve_id }}</code><h3>{{ finding.product or 'Unavailable' }} <span>{{ finding.version or 'Unavailable' }}</span></h3><p>{{ finding.description or 'Description unavailable.' }}</p></div><div class="review-meta"><span class="severity-badge severity-indeterminate">INDETERMINATE</span><small>{{ finding.applicability_evidence.reason if finding.applicability_evidence and finding.applicability_evidence.reason else 'Additional applicability evidence required.' }}</small></div></article>{% endfor %}</div>{% else %}<div class="empty-state" role="status"><strong>No indeterminate candidates</strong><span>The scan returned no unresolved applicability candidates.</span></div>{% endif %}
+        </section>
 
-        <tr>
-            <th>Host</th>
-            <th>Port</th>
-            <th>Protocol</th>
-            <th>Service</th>
-            <th>Version</th>
-            <th>State</th>
-            <th>Summary</th>
-        </tr>
+        {% if lookup_errors %}<section class="content-section" aria-labelledby="errors-title"><div class="section-heading"><div><p class="eyebrow">Collection health</p><h2 id="errors-title">Lookup errors</h2></div><span class="section-count">{{ lookup_errors|length }} errors</span></div><div class="error-list">{% for error in lookup_errors %}<article class="lookup-error"><div><code>{{ error.host }}:{{ error.port }}</code><strong>{{ error.service or 'Service unavailable' }}</strong></div><p>{{ error.error }}</p></article>{% endfor %}</div></section>{% endif %}
 
-        {% for result in results %}
-
-        <tr>
-            <td>{{ result.Host }}</td>
-            <td>{{ result.Port }}</td>
-            <td>{{ result.Protocol }}</td>
-            <td>{{ result.Service }}</td>
-            <td>{{ result.Version }}</td>
-            <td>{{ result.State }}</td>
-            <td>{{ result.Summary }}</td>
-        </tr>
-
-        {% endfor %}
-
-    </table>
-
-    {% else %}
-
-    <p>No open services were found.</p>
-
-    {% endif %}
-
-    <br>
-
-    <a href="/">Scan another target</a>
-
+        <footer class="page-footer"><span>RISKFORGE VANTAGE · Existing scan pipeline</span><a class="text-link" href="/">Run another scan <span aria-hidden="true">→</span></a></footer>
+    </main>
 </body>
 </html>

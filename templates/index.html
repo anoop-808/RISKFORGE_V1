@@ -1,30 +1,56 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <title>RISKFORGE VANTAGE</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Scan setup · RISKFORGE VANTAGE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
 </head>
-
 <body>
+    <header class="topbar">
+        <a class="brand" href="/" aria-label="RISKFORGE VANTAGE home">
+            <span class="brand-mark" aria-hidden="true">RF</span>
+            <span><strong>RISKFORGE</strong><small>VANTAGE ENGINE</small></span>
+        </a>
+        <span class="engine-status"><span class="status-dot"></span>Ready for scan</span>
+    </header>
 
-    <h1>RISKFORGE VANTAGE</h1>
+    <main class="setup-shell">
+        <section class="setup-copy" aria-labelledby="setup-title">
+            <p class="eyebrow">Exposure intelligence / network assessment</p>
+            <h1 id="setup-title">Start a focused<br><span>VANTAGE scan.</span></h1>
+            <p class="lede">Identify exposed services, map detected software to NVD applicability data, and review confirmed risk without losing the uncertain cases.</p>
+            <dl class="principles">
+                <div><dt>01</dt><dd>Service discovery</dd></div>
+                <div><dt>02</dt><dd>CPE applicability</dd></div>
+                <div><dt>03</dt><dd>Risk-ranked findings</dd></div>
+            </dl>
+        </section>
 
-    <h2>Network Scanner</h2>
-
-    <form action="/scan" method="POST">
-
-        <label for="target_ip">Target IP:</label>
-
-        <input
-            type="text"
-            id="target_ip"
-            name="target_ip"
-            placeholder="192.168.56.103"
-            required
-        >
-
-        <button type="submit">Run Scan</button>
-
-    </form>
-
+        <section class="scan-panel" aria-labelledby="scan-panel-title">
+            <div class="panel-heading">
+                <div><p class="eyebrow">New assessment</p><h2 id="scan-panel-title">Scan target</h2></div>
+                <span class="panel-index">01 / 01</span>
+            </div>
+            {% if error %}
+            <div class="alert alert-error" role="alert">{{ error }}</div>
+            {% endif %}
+            <form id="scan-form" action="/scan" method="post">
+                <label for="target_ip">Target IP address</label>
+                <div class="input-row">
+                    <span class="input-prefix" aria-hidden="true">↳</span>
+                    <input type="text" id="target_ip" name="target_ip" value="{{ target }}" placeholder="192.168.56.103" autocomplete="off" required aria-describedby="target-help">
+                </div>
+                <p class="field-help" id="target-help">Enter an IPv4 or IPv6 address within the approved assessment scope.</p>
+                <button class="button button-primary" type="submit">
+                    <span class="button-label">Run VANTAGE scan</span>
+                    <span class="button-loading" aria-hidden="true">Scanning…</span>
+                    <span aria-hidden="true">→</span>
+                </button>
+            </form>
+            <p class="panel-footnote"><span class="lock-mark" aria-hidden="true">▣</span> Results are written through the existing VANTAGE database pipeline.</p>
+        </section>
+    </main>
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>
