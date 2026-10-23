@@ -111,3 +111,46 @@ def test_failed_scan_is_not_rendered_as_success(monkeypatch):
     assert response.status_code == 400
     assert "scanner unavailable" in response.get_data(as_text=True)
     save.assert_not_called()
+
+
+def _discovery():
+    candidate = {
+        "interface": "wlan0", "operational_state": "UP", "local_address": "192.168.1.23",
+        "ipv4_cidr": "192.168.1.0/24", "gateway": "192.168.1.1", "eligible": True, "issues": [],
+    }
+    return {"version": 1, "discovered_at": "now", "interfaces": [], "candidates": [candidate], "issues": []}
+
+
+def test_discovery_endpoint_is_read_only(monkeypatch):
+    monkeypatch.setattr(app_module, "discover_network", Mock(return_value=_discovery()))
+    nmap = Mock()
+    monkeypatch.setattr(app_module, "run_vantage", nmap)
+    response = app_module.app.test_client().get("/api/network/discovery")
+    assert response.status_code == 200
+    assert response.json["discovery"]["candidates"][0]["ipv4_cidr"] == "192.168.1.0/24"
+    nmap.assert_not_called()
+
+
+def test_scope_preview_excludes_local_address_and_confirms_staleness(monkeypatch):
+    discovery = _discovery()
+    monkeypatch.setattr(app_module, "discover_network", Mock(return_value=discovery))
+    client = app_module.app.test_client()
+    response = client.post("/scan/scope/preview", json={
+        "interface": "wlan0", "local_address": "192.168.1.23", "ipv4_cidr": "192.168.1.0/24",
+    })
+    assert response.status_code == 200
+    assert response.json["scope"]["host_count"] == 253
+    assert response.json["scope"]["excluded_addresses"] == ["192.168.1.23"]
+    token = response.json["scope_token"]
+    monkeypatch.setattr(app_module, "discover_network", Mock(return_value={**discovery, "candidates": []}))
+    stale = client.post("/scan/scope/preview", json={"scope_token": token, "confirm": True})
+    assert stale.status_code == 409
+
+
+def test_scope_preview_rejects_oversized_network(monkeypatch):
+    monkeypatch.setattr(app_module, "discover_network", Mock(return_value=_discovery()))
+    response = app_module.app.test_client().post("/scan/scope/preview", json={
+        "interface": "wlan0", "local_address": "192.168.1.23", "ipv4_cidr": "192.168.0.0/16",
+    })
+    assert response.status_code == 400
+    assert "/24" in response.json["error"]

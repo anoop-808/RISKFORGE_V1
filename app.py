@@ -1,13 +1,22 @@
 from collections import Counter
 
-from flask import Flask, render_template, request
+import ipaddress
+import os
+import secrets
+from urllib.parse import urlsplit
+
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from flask import Flask, jsonify, render_template, request
 
 from engine_vantage.database import save_scan_results
 from engine_vantage.formatter import make_readable
 from engine_vantage.vantage import run_vantage
+from engine_vantage.network_discovery import DiscoveryError, discover_network
 
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get("RISKFORGE_SECRET_KEY", secrets.token_hex(32))
+_scope_serializer = URLSafeTimedSerializer(app.config["SECRET_KEY"], salt="vantage-scope-preview")
 
 
 def _scan_summary(result):
@@ -29,6 +38,92 @@ def _scan_summary(result):
 @app.route("/")
 def index():
     return render_template("index.html", target="", error=None)
+
+
+def _same_origin():
+    for header in ("Origin", "Referer"):
+        value = request.headers.get(header)
+        if value and urlsplit(value).netloc != request.host:
+            return False
+    return True
+
+
+def _scope_input():
+    return request.get_json(silent=True) or request.form
+
+
+def _find_candidate(discovery, interface, cidr, local_address):
+    return next(
+        (candidate for candidate in discovery["candidates"]
+         if candidate["interface"] == interface
+         and candidate["ipv4_cidr"] == cidr
+         and candidate["local_address"] == local_address),
+        None,
+    )
+
+
+@app.get("/api/network/discovery")
+def network_discovery():
+    """Read-only, passive network discovery; never starts Nmap or writes history."""
+    if not _same_origin():
+        return jsonify({"ok": False, "error": "Cross-site discovery requests are not allowed."}), 403
+    try:
+        return jsonify({"ok": True, "discovery": discover_network()})
+    except DiscoveryError as exc:
+        return jsonify({"ok": False, "error": str(exc), "discovery": None})
+
+
+@app.post("/scan/scope/preview")
+def scope_preview():
+    if not _same_origin():
+        return jsonify({"ok": False, "error": "Cross-site scope requests are not allowed."}), 403
+    values = _scope_input()
+    confirm = values.get("confirm") in {True, "true", "1", 1}
+    token = values.get("scope_token")
+    try:
+        discovery = discover_network()
+    except DiscoveryError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 503
+
+    if confirm:
+        if not isinstance(token, str):
+            return jsonify({"ok": False, "error": "A valid scope preview is required first."}), 400
+        try:
+            signed = _scope_serializer.loads(token, max_age=300)
+        except (BadSignature, SignatureExpired):
+            return jsonify({"ok": False, "error": "The scope preview expired or is invalid. Refresh discovery and try again."}), 400
+        candidate = _find_candidate(discovery, signed.get("interface"), signed.get("cidr"), signed.get("local_address"))
+        if not candidate or not candidate["eligible"]:
+            return jsonify({"ok": False, "error": "The selected network changed or is no longer eligible."}), 409
+        return jsonify({
+            "ok": True, "confirmed": True,
+            "message": "The authorized scope was confirmed. Multi-host scanning is not enabled in Phase 1.",
+            "scope": {"interface": candidate["interface"], "ipv4_cidr": candidate["ipv4_cidr"], "local_address": candidate["local_address"]},
+        })
+
+    interface = values.get("interface")
+    cidr = values.get("ipv4_cidr")
+    local_address = values.get("local_address")
+    if not all(isinstance(value, str) and value for value in (interface, cidr, local_address)):
+        return jsonify({"ok": False, "error": "Select a discovered IPv4 network before previewing its scope."}), 400
+    try:
+        network = ipaddress.ip_network(cidr, strict=False)
+        local_ip = ipaddress.ip_address(local_address)
+    except ValueError:
+        return jsonify({"ok": False, "error": "The selected IP or CIDR is invalid."}), 400
+    if network.version != 4 or network.prefixlen < 24:
+        return jsonify({"ok": False, "error": "Phase 1 permits only IPv4 networks of /24 or narrower."}), 400
+    candidate = _find_candidate(discovery, interface, str(network), str(local_ip))
+    if not candidate or not candidate["eligible"]:
+        return jsonify({"ok": False, "error": "The selected network is not a current eligible discovery candidate."}), 409
+    hosts = [str(host) for host in network.hosts() if host != local_ip]
+    warnings = ["Discovery is not proof of authorization. Confirm that this exact scope is approved."]
+    warnings.extend(item["message"] for item in candidate.get("issues", []))
+    signed = _scope_serializer.dumps({"interface": interface, "cidr": str(network), "local_address": str(local_ip)})
+    return jsonify({"ok": True, "confirmed": False, "scope_token": signed, "scope": {
+        "interface": interface, "local_address": str(local_ip), "ipv4_cidr": str(network),
+        "host_count": len(hosts), "excluded_addresses": [str(local_ip)], "warnings": warnings,
+    }})
 
 
 @app.route("/scan", methods=["POST"])

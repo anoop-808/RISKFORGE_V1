@@ -49,6 +49,16 @@
                 </button>
             </form>
             <p class="panel-footnote"><span class="lock-mark" aria-hidden="true">▣</span> Results are written through the existing VANTAGE database pipeline.</p>
+
+            <section class="discovery-section" aria-labelledby="discovery-title">
+                <div class="section-heading">
+                    <div><p class="eyebrow">Passive local view</p><h3 id="discovery-title">Choose an assessment scope</h3></div>
+                </div>
+                <p class="field-help">Reads local Linux network configuration only. Selecting a network does not start a scan.</p>
+                <div id="discovery-status" class="discovery-status" role="status" aria-live="polite">Loading local networks…</div>
+                <div id="network-candidates" class="network-candidates"></div>
+                <div id="scope-preview" class="scope-preview" hidden></div>
+            </section>
         </section>
     </main>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
